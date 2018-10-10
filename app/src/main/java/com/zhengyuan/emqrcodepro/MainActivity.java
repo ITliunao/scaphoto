@@ -2,7 +2,6 @@ package com.zhengyuan.emqrcodepro;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -21,6 +20,7 @@ import com.zhengyuan.baselib.listener.NetworkCallbacks;
 import com.zhengyuan.baselib.utils.Utils;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 
 public class MainActivity extends Activity implements View.OnClickListener {
@@ -28,16 +28,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private String mLoginID = EMProApplicationDelegate.userInfo.getUserId();
 
     private ImageButton mBackBtn;
-    private ImageButton menu;
-    private TextView mTextView;
+    //private ImageButton menu;
+    //private TextView mTextView;
 
-    private ImageView mSacnImageView;
-    private EditText QRInfoEditText;
-    private Button submitQRInfoButton;
+    public ImageView mScanImageView;
+    public EditText QRInfoEditText;
+    public Button submitQRInfoButton;
 
     public static final int REQUST_SACN_CODE0 = 0;
     private String mScanInfo;
-    private Handler handlerSubmitQRInfo;
+    /*private Handler handlerSubmitQRInfo;*/
+
+    private handlerSubmitQRInfo2 mhandlerSubmitQRInfo2 = new handlerSubmitQRInfo2(MainActivity.this);
 
 
     @Override
@@ -46,7 +48,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         setContentView(R.layout.activity_main);
         initView();
         initEvent();
-        handlerSubmitQRInfo = new Handler() {
+        /*handlerSubmitQRInfo = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 // TODO Auto-generated method stub
@@ -59,7 +61,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     Toast.makeText(MainActivity.this, "系统原因，提交失败", Toast.LENGTH_SHORT).show();
                 }
             }
-        };
+        };*/
     }
 
     @Override
@@ -86,19 +88,19 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void initView() {
 
         mBackBtn = (ImageButton) findViewById(R.id.title_back_btn);
-        menu = (ImageButton) findViewById(R.id.main_menu_bn);
+        ImageButton menu = (ImageButton) findViewById(R.id.main_menu_bn);
         menu.setVisibility(View.GONE);
-        mTextView = (TextView) findViewById(R.id.title_tv);
+        TextView mTextView = (TextView) findViewById(R.id.title_tv);
         mTextView.setText("扫码" + "-" + mLoginID);
 
-        mSacnImageView = (ImageView) findViewById(R.id.sacnImageView);
+        mScanImageView = (ImageView) findViewById(R.id.sacnImageView);
         QRInfoEditText = (EditText) findViewById(R.id.QRInfoEditText);
         submitQRInfoButton = (Button) findViewById(R.id.submitQRInfoButton);
 
     }
 
     private void initEvent() {
-        mSacnImageView.setOnClickListener(this);
+        mScanImageView.setOnClickListener(this);
         mBackBtn.setOnClickListener(this);
         submitQRInfoButton.setOnClickListener(this);
     }
@@ -158,11 +160,54 @@ public class MainActivity extends Activity implements View.OnClickListener {
                             Utils.showToast("没有找到！");
                             return;
                         }
-                        Message m = handlerSubmitQRInfo.obtainMessage();
+                        /*Message m = handlerSubmitQRInfo.obtainMessage();
                         m.obj = (String) o;
-                        handlerSubmitQRInfo.sendMessage(m);
+                        handlerSubmitQRInfo.sendMessage(m);*/
+
+                        Message m = mhandlerSubmitQRInfo2.obtainMessage();
+                        m.obj = (String) o;
+                        mhandlerSubmitQRInfo2.sendMessage(m);
+
                     }
                 }
         );
     }
+
+    /*
+    * 提示用户信息
+    * */
+    public void myToast(String info, int LENGTH) {
+        Toast.makeText(MainActivity.this, info, LENGTH).show();
+    }
+
+    /*
+    * 静态内部类和弱引用，解决内存泄漏的问题
+    * */
+    public static class handlerSubmitQRInfo2 extends Handler {
+        //弱引用<引用外部类>
+        WeakReference<MainActivity> mActivity;
+
+        handlerSubmitQRInfo2(MainActivity activity) {
+            //构造创建弱引用
+            mActivity = new WeakReference<MainActivity>(activity);
+        }
+
+        @Override
+        public void handleMessage(android.os.Message msg) {
+            //通过弱引用获取外部类.
+            MainActivity activity = mActivity.get();
+            //进行非空再操作
+            if (activity != null) {
+                super.handleMessage(msg);
+                if (msg.obj.equals("true")) {
+                    activity.myToast("提交成功", Toast.LENGTH_SHORT);
+                    activity.QRInfoEditText.setText("");
+                    activity.QRInfoEditText.setVisibility(View.GONE);
+                } else {
+                    activity.myToast("系统原因，提交失败", Toast.LENGTH_SHORT);
+                }
+            }
+        }
+    }
+
 }
